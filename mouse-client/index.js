@@ -43,7 +43,7 @@ const handle = (data) => {
 const connect = () => {
 
     const client = new net.Socket();
-    client.connect(3000, "192.168.1.27");
+    client.connect(process.env.SERVER_PORT, process.env.SERVER_HOST);
     client.on("connect", () => {
         client.write(JSON.stringify({ token: process.env.TOKEN, type: "mouse" }) + "\n");
         console.log("Connected to the server.");
