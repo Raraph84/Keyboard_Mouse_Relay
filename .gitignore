@@ -1,0 +1,4 @@
+node_modules/
+libnut-core/
+package-lock.json
+.env
