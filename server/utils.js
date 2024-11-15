@@ -1,8 +1,10 @@
 const dbus = require("dbus-native");
 
+let bus = null;
+
 const getBluetoothInputHostPaths = async () => {
 
-    const bus = dbus.systemBus();
+    if (!bus) bus = dbus.systemBus();
 
     const objManager = await new Promise((resolve) => bus.getService("org.bluez").getInterface("/", "org.freedesktop.DBus.ObjectManager", (error, objManager) => {
         if (error) throw error;

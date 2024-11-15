@@ -114,7 +114,7 @@ let interruptSocketFinal;
 
 const send = (bytes) => interruptSocketFinal && interruptSocketFinal.write(Buffer.from([161, ...bytes]));
 
-const remotePressedKeys = [];
+let remotePressedKeys = [];
 let oldKeys = encodeKeys(remotePressedKeys, keymap).keys;
 let oldMedia = encodeKeys(remotePressedKeys, keymap).media;
 const updateKeys = () => {
@@ -143,6 +143,84 @@ const releaseKey = (key) => {
 const clickKey = (key) => {
     pressKey(key);
     releaseKey(key);
+};
+
+let bluetoothKeyboardEnabled = false;
+let bluetoothMouseEnabled = true;
+
+const broadcastKeys = (keys) => {
+    for (const socket of keyboardSockets) {
+        try {
+            socket.write(keys.join(" ") + "\n");
+        } catch (error) {
+        }
+    }
+};
+
+const keyboardHandler = (keys) => {
+
+    if (keys.length === 1 && keys.includes("HOME")) {
+        clickKey("SPACE");
+        setTimeout(() => clickKey("SPACE"), 500);
+        setTimeout(() => {
+            for (const c of "***REMOVED***")
+                clickKey(c);
+        }, 1000);
+        return;
+    }
+
+    if (keys.length === 1 && keys.includes("POWER")) {
+        clickKey("POWER");
+        return;
+    }
+
+    if (keys.length === 2 && keys.includes("RIGHT_ALT") && keys.includes("PAUSE")) {
+        bluetoothKeyboardEnabled = !bluetoothKeyboardEnabled;
+        console.log("Bluetooth keyboard", bluetoothKeyboardEnabled ? "enabled" : "disabled");
+        remotePressedKeys = [];
+        updateKeys();
+        broadcastKeys([]);
+        return;
+    }
+
+    if (keys.length === 2 && keys.includes("RIGHT_ALT") && keys.includes("PRINT_SCREEN")) {
+        bluetoothMouseEnabled = !bluetoothMouseEnabled;
+        console.log("Bluetooth mouse", bluetoothMouseEnabled ? "enabled" : "disabled");
+
+        return;
+    }
+
+    if (bluetoothKeyboardEnabled) {
+        remotePressedKeys = keys;
+        updateKeys();
+        return;
+    }
+
+    broadcastKeys(keys);
+};
+
+let oldButton = 0;
+const mouseHandler = (buffer) => {
+
+    if (bluetoothMouseEnabled) {
+        send(buffer);
+        return;
+    }
+
+    const { button, x, y, yScroll, xScroll } = decodeMouse(buffer);
+
+    const posMsg = (x !== 0 || y !== 0) ? Buffer.from([0, toByte(x), toByte(y)]) : null;
+    const otherMsg = (button !== oldButton || yScroll !== 0 || xScroll !== 0) ? Buffer.from([1, button, toByte(yScroll), toByte(xScroll)]) : null;
+
+    for (const socket of mouseSockets) {
+        try {
+            if (posMsg) socket.write(posMsg);
+            if (otherMsg) socket.write(otherMsg);
+        } catch (error) {
+        }
+    }
+
+    oldButton = button;
 };
 
 const connectKeyboard = async () => {
@@ -174,7 +252,6 @@ const connectKeyboard = async () => {
         }
     }
 
-    let oldButton = 0;
     let oldPressedKeys = [];
     let oldPressedMedia = [];
     const stream = fs.createReadStream("/dev/" + hidraw, { flags: "r", highWaterMark: 64 });
@@ -182,63 +259,21 @@ const connectKeyboard = async () => {
 
         if (buffer[0] === 5) { // Mouse
 
-            send(buffer);
-
-            const { button, x, y, yScroll, xScroll } = decodeMouse(buffer);
-
-            const posMsg = (x !== 0 || y !== 0) ? Buffer.from([0, toByte(x), toByte(y)]) : null;
-            const otherMsg = (button !== oldButton || yScroll !== 0 || xScroll !== 0) ? Buffer.from([1, button, toByte(yScroll), toByte(xScroll)]) : null;
-
-            for (const socket of mouseSockets) {
-                try {
-                    if (posMsg) socket.write(posMsg);
-                    if (otherMsg) socket.write(otherMsg);
-                } catch (error) {
-                }
-            }
-
-            oldButton = button;
+            mouseHandler(buffer);
 
         } else if (buffer[0] === 1) { // Keyboard
 
             const keys = decodeKeys(buffer, keymap);
             if (!keys) return;
-            const pressedKeys = keys.concat(decodeModifiers(buffer[1], keymap.modifiers));
-            oldPressedKeys = pressedKeys;
+            oldPressedKeys = keys.concat(decodeModifiers(buffer[1], keymap.modifiers));
 
-            if (pressedKeys.includes("HOME")) {
-                clickKey("SPACE");
-                setTimeout(() => clickKey("SPACE"), 500);
-                setTimeout(() => {
-                    for (const c of "***REMOVED***")
-                        clickKey(c);
-                }, 1000);
-                return;
-            }
-
-            for (const socket of keyboardSockets) {
-                try {
-                    socket.write(pressedKeys.concat(oldPressedMedia).join(" ") + "\n");
-                } catch (error) {
-                }
-            }
+            keyboardHandler(oldPressedKeys.concat(oldPressedMedia));
 
         } else if (buffer[0] === 2) { // Media
 
-            const pressedMedia = decodeModifiers(buffer[1], keymap.media1).concat(decodeModifiers(buffer[2], keymap.media2)).concat(decodeModifiers(buffer[3], keymap.media3));
-            oldPressedMedia = pressedMedia;
+            oldPressedMedia = decodeModifiers(buffer[1], keymap.media1).concat(decodeModifiers(buffer[2], keymap.media2)).concat(decodeModifiers(buffer[3], keymap.media3));
 
-            if (pressedMedia.includes("POWER")) {
-                clickKey("POWER");
-                return;
-            }
-
-            for (const socket of keyboardSockets) {
-                try {
-                    socket.write(pressedMedia.concat(oldPressedKeys).join(" ") + "\n");
-                } catch (error) {
-                }
-            }
+            keyboardHandler(oldPressedKeys.concat(oldPressedMedia));
         }
     });
     stream.on("close", () => {

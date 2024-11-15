@@ -1,3 +1,4 @@
+const { fromByte } = require("../server/utils");
 const net = require("net");
 const provider = process.platform === "win32" ? require("../libnut-core") : require("robotjs");
 
@@ -6,8 +7,6 @@ require("dotenv").config();
 provider.setMouseDelay(0);
 
 const mouseSpeed = 1.1;
-
-const fromByte = (byte) => byte > 128 ? byte - 256 : byte;
 
 let lastButton = null;
 const handle = (data) => {

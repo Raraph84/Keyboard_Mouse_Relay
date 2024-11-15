@@ -6,23 +6,66 @@ require("dotenv").config();
 
 Object.assign(keymap, {
     "AC_HOME": "escape",
-    "CAPS_LOCK": null
+    "CAPS_LOCK": null,
+    "INSERT": null
 });
 
-let lastKeys = [];
-const handle = (data) => {
+const repeatAfter = 250;
+const repeatInterval = 50;
 
-    const mapped = data.split(" ").map((key) => keymap[key]).filter((key) => key).reverse();
+let lastKey = null;
+
+const keyPressed = (key) => {
+
+    const mapped = keymap[key];
+    if (!mapped) return;
+
+    libnut.keyToggle(mapped, "down");
+
+    if (lastKey && lastKey.key === key) return;
+
+    if (lastKey && lastKey.timeout) clearTimeout(lastKey.timeout);
+    if (lastKey && lastKey.interval) clearInterval(lastKey.interval);
+
+    const timeout = setTimeout(() => {
+
+        const interval = setInterval(() => keyPressed(key), repeatInterval);
+
+        lastKey = { key, timeout: null, interval };
+
+    }, repeatAfter);
+
+    lastKey = { key, timeout, interval: null };
+};
+
+const keyReleased = (key) => {
+
+    const mapped = keymap[key];
+    if (!mapped) return;
+
+    libnut.keyToggle(mapped, "up");
+
+    if (lastKey && lastKey.key === key) {
+        if (lastKey.timeout) clearTimeout(lastKey.timeout);
+        if (lastKey.interval) clearInterval(lastKey.interval);
+        lastKey = null;
+    }
+};
+
+let lastKeys = [];
+const handleKeys = (data) => {
+
+    const keys = data.split(" ").reverse();
 
     for (const key of lastKeys)
-        if (!mapped.includes(key))
-            libnut.keyToggle(key, "up");
+        if (!keys.includes(key))
+            keyReleased(key);
 
-    for (const key of mapped)
+    for (const key of keys)
         if (!lastKeys.includes(key))
-            libnut.keyToggle(key, "down");
+            keyPressed(key);
 
-    lastKeys = mapped;
+    lastKeys = keys;
 };
 
 const connect = () => {
@@ -44,7 +87,7 @@ const connect = () => {
         data += chunk;
         while (data.includes("\n")) {
             const dataSplit = data.split("\n");
-            handle(dataSplit.shift());
+            handleKeys(dataSplit.shift());
             data = dataSplit.join("\n");
         }
     });
