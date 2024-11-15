@@ -5,21 +5,24 @@ require("dotenv").config();
 
 provider.setMouseDelay(0);
 
+const mouseSpeed = 1.1;
+
+const fromByte = (byte) => byte > 128 ? byte - 256 : byte;
+
 let lastButton = null;
 const handle = (data) => {
 
-    const split = data.split(" ");
-    if (split[0] === "0") {
+    if (data[0] === 0) {
 
-        const x = parseInt(split[1]);
-        const y = parseInt(split[2]);
+        const x = fromByte(data[1]) * mouseSpeed;
+        const y = fromByte(data[2]) * mouseSpeed;
 
         const old = provider.getMousePos();
         provider.moveMouse(old.x + x, old.y + y);
 
-    } else if (split[0] === "1") {
+    } else if (data[0] === 1) {
 
-        const button = { 1: "left", 2: "right", 4: "middle" }[split[1]];
+        const button = { 1: "left", 2: "right", 4: "middle" }[data[1]];
         if (button && lastButton !== button) {
             if (lastButton) provider.mouseToggle("up", lastButton);
             provider.mouseToggle("down", button);
@@ -29,10 +32,10 @@ const handle = (data) => {
             lastButton = null;
         }
 
-        if (split[2] !== "0" || split[3] !== "0") {
+        if (data[2] || data[3]) {
 
-            const yScroll = parseInt(split[2]);
-            const xScroll = 0 - parseInt(split[3]);
+            const yScroll = fromByte(data[2]);
+            const xScroll = 0 - fromByte(data[3]);
 
             if (process.platform === "win32") provider.scrollMouse(xScroll * 144, yScroll * 144);
             else provider.scrollMouse(xScroll, yScroll);
@@ -54,13 +57,13 @@ const connect = () => {
     });
     client.on("error", () => { });
 
-    let data = "";
+    let data = Buffer.alloc(0);
+    let nextSize = 0;
     client.on("data", (chunk) => {
-        data += chunk;
-        while (data.includes("\n")) {
-            const dataSplit = data.split("\n");
-            handle(dataSplit.shift());
-            data = dataSplit.join("\n");
+        data = Buffer.concat([data, chunk]);
+        while (data.length && data.length >= (nextSize = { 0: 3, 1: 4 }[data[0]])) {
+            handle(data.subarray(0, nextSize));
+            data = data.subarray(nextSize);
         }
     });
 };

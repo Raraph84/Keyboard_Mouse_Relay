@@ -104,11 +104,16 @@ const encodeKeys = (pressedKeys, keymap) => {
     return { keys, media };
 };
 
+const toByte = (value) => value < 0 ? 256 + value : value;
+const fromByte = (byte) => byte > 128 ? byte - 256 : byte;
+
 module.exports = {
+    getBluetoothInputHostPaths,
     decodeMouse,
     encodeMouse,
     decodeModifiers,
     decodeKeys,
     encodeKeys,
-    getBluetoothInputHostPaths
+    toByte,
+    fromByte
 };
