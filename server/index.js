@@ -164,7 +164,7 @@ const keyboardHandler = (keys) => {
         setTimeout(() => clickKey("SPACE"), 500);
         setTimeout(() => {
             pressKey("LEFT_SHIFT");
-            for (const c of "***REMOVED***")
+            for (const c of process.env.PASSWORD)
                 clickKey(c);
             releaseKey("LEFT_SHIFT");
         }, 1000);
