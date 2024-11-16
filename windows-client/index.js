@@ -1,3 +1,4 @@
+const { exec } = require("child_process");
 const { fromByte } = require("../server/utils");
 const net = require("net");
 const libnut = require("../libnut-core");
@@ -64,6 +65,11 @@ const handleKeys = (data) => {
 
     const keys = data.split(" ").reverse();
 
+    if (keys.length === 2 && keys.includes("LEFT_WIN") && keys.includes("L")) {
+        exec("Rundll32.exe user32.dll,LockWorkStation");
+        return;
+    }
+
     for (const key of lastKeys)
         if (!keys.includes(key))
             keyReleased(key);
@@ -85,7 +91,7 @@ const connectKeyboard = () => {
     });
     client.on("close", () => {
         console.log("Disconnected from the keyboard server, reconnecting...");
-        setTimeout(connectKeyboard, 500);
+        setTimeout(connectKeyboard, 1000);
     });
     client.on("error", () => { });
 
