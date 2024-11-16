@@ -1,0 +1,8 @@
+<service>
+  <id>remote-keyboard-client</id>
+  <name>Remote Keyboard Client</name>
+  <description></description>
+  <executable>D:\Projects\Remote-Keyboard\windows-client\service\paexec.exe</executable>
+  <arguments>-s -x -w D:\Projects\Remote-Keyboard\windows-client node index.js remotekeyboard --logon</arguments>
+  <onfailure action="restart" />
+</service>

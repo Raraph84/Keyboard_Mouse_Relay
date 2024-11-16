@@ -1,5 +1,5 @@
 {
-  "name": "keyboard-mouse-relay-server",
+  "name": "keyboard-relay-server",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",

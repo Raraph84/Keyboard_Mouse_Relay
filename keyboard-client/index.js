@@ -4,12 +4,6 @@ const keymap = require("./keymap");
 
 require("dotenv").config();
 
-Object.assign(keymap, {
-    "AC_HOME": "escape",
-    "CAPS_LOCK": null,
-    "INSERT": null
-});
-
 const repeatAfter = 250;
 const repeatInterval = 50;
 
