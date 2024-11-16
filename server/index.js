@@ -159,12 +159,14 @@ const broadcastKeys = (keys) => {
 
 const keyboardHandler = (keys) => {
 
-    if (keys.length === 1 && keys.includes("HOME")) {
+    if (keys.length === 2 && keys.includes("LEFT_ALT") && keys.includes("HOME")) {
         clickKey("SPACE");
         setTimeout(() => clickKey("SPACE"), 500);
         setTimeout(() => {
+            pressKey("LEFT_SHIFT");
             for (const c of "***REMOVED***")
                 clickKey(c);
+            releaseKey("LEFT_SHIFT");
         }, 1000);
         return;
     }
